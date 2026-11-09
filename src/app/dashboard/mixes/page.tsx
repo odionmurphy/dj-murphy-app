@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   isMixArtworkExtension,
@@ -32,6 +32,8 @@ type Mix = {
 type Access = "checking" | "signed-out" | "denied" | "ready";
 
 export default function ManageMixesPage() {
+  const activeUploadRequest = useRef<XMLHttpRequest | null>(null);
+  const uploadAbortController = useRef<AbortController | null>(null);
   const [access, setAccess] = useState<Access>("checking");
   const [mixes, setMixes] = useState<Mix[]>([]);
   const [title, setTitle] = useState("");
@@ -40,6 +42,9 @@ export default function ManageMixesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [artwork, setArtwork] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [canCancelUpload, setCanCancelUpload] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadStage, setUploadStage] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -234,7 +239,12 @@ export default function ManageMixesPage() {
     event.preventDefault();
     if (!file || uploading) return;
 
+    const abortController = new AbortController();
+    uploadAbortController.current = abortController;
     setUploading(true);
+    setCanCancelUpload(true);
+    setUploadProgress(0);
+    setUploadStage("Preparing audio upload...");
     setError("");
     setNotice("");
 
@@ -245,6 +255,9 @@ export default function ManageMixesPage() {
       } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (!session) throw new Error("Please sign in again to upload a mix.");
+      if (abortController.signal.aborted) {
+        throw new Error("Upload canceled.");
+      }
 
       const signResponse = await fetch("/api/mixes", {
         method: "POST",
@@ -252,6 +265,7 @@ export default function ManageMixesPage() {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
+        signal: abortController.signal,
         body: JSON.stringify({
           kind: "audio",
           fileName: file.name,
@@ -262,29 +276,55 @@ export default function ManageMixesPage() {
       if (!signResponse.ok) {
         throw new Error(getErrorMessage(signBody, "Could not prepare the upload."));
       }
+      if (abortController.signal.aborted) {
+        throw new Error("Upload canceled.");
+      }
       if (!isR2Upload(signBody) || signBody.kind !== "audio") {
         throw new Error("The server returned an invalid upload response.");
       }
 
       const { uploadUrl, filePath, contentType } = signBody;
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": contentType },
-        body: file,
-      });
-      if (!uploadResponse.ok) {
-        throw new Error(
-          `R2 upload failed (${uploadResponse.status}). Check the bucket CORS settings and try again.`
+      setUploadStage("Uploading audio...");
+      try {
+        await uploadFileWithProgress(
+          uploadUrl,
+          contentType,
+          file,
+          setUploadProgress,
+          "audio",
+          (request) => {
+            activeUploadRequest.current = request;
+            setCanCancelUpload(request !== null);
+          }
         );
+      } catch (uploadError) {
+        try {
+          await deleteR2File(filePath, session.access_token);
+        } catch (cleanupError) {
+          console.error(
+            "Could not clean up an interrupted R2 mix upload:",
+            cleanupError
+          );
+        }
+        throw uploadError;
       }
 
       let artworkUpload: R2Upload | null = null;
       try {
         if (artwork) {
+          setUploadStage("Uploading cover image...");
+          setUploadProgress(0);
+          setCanCancelUpload(true);
           artworkUpload = await uploadToR2(
             artwork,
             "artwork",
-            session.access_token
+            session.access_token,
+            setUploadProgress,
+            (request) => {
+              activeUploadRequest.current = request;
+              setCanCancelUpload(request !== null);
+            },
+            abortController.signal
           );
         }
       } catch (artworkError) {
@@ -296,6 +336,8 @@ export default function ManageMixesPage() {
         throw artworkError;
       }
 
+      setUploadStage("Saving mix details...");
+      setUploadProgress(null);
       const { error: insertError } = await supabase.from("mixes").insert({
         title: title.trim(),
         genre: genre.trim() || null,
@@ -329,10 +371,28 @@ export default function ManageMixesPage() {
       setNotice("Mix uploaded. It is now live on the Mixes page.");
       await loadMixes();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      setError(
+        abortController.signal.aborted
+          ? "Upload canceled."
+          : err instanceof Error
+            ? err.message
+            : "Upload failed. Please try again."
+      );
     } finally {
       setUploading(false);
+      setUploadProgress(null);
+      setUploadStage("");
+      setCanCancelUpload(false);
+      activeUploadRequest.current = null;
+      uploadAbortController.current = null;
     }
+  }
+
+  function cancelUpload() {
+    setCanCancelUpload(false);
+    setUploadStage("Canceling upload...");
+    uploadAbortController.current?.abort();
+    activeUploadRequest.current?.abort();
   }
 
   async function handleDelete(mix: Mix) {
@@ -521,13 +581,45 @@ export default function ManageMixesPage() {
             </p>
           )}
 
+          {uploading && (
+            <div className="space-y-2" role="status" aria-live="polite">
+              <div className="flex items-center justify-between gap-3 text-xs text-white/60">
+                <span>{uploadStage}</span>
+                {uploadProgress !== null && <span>{uploadProgress}%</span>}
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                {uploadProgress === null ? (
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-purple-400" />
+                ) : (
+                  <div
+                    className="h-full rounded-full bg-purple-500 transition-[width] duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={uploading || !file}
             className="w-full bg-purple-600 px-5 py-3 font-bold transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {uploading ? "Uploading... keep this tab open" : "Upload mix"}
+            {uploading
+              ? uploadProgress === null
+                ? uploadStage
+                : `Uploading... ${uploadProgress}%`
+              : "Upload mix"}
           </button>
+          {uploading && canCancelUpload && (
+            <button
+              type="button"
+              onClick={cancelUpload}
+              className="w-full border border-white/15 px-5 py-3 text-sm text-white/70 transition hover:border-red-400/50 hover:text-red-300"
+            >
+              Cancel upload
+            </button>
+          )}
         </form>
 
         <h2 className="mt-12 text-xl font-bold">Uploaded mixes ({mixes.length})</h2>
@@ -596,7 +688,10 @@ function isR2Upload(value: unknown): value is R2Upload {
 async function uploadToR2(
   file: File,
   kind: R2Upload["kind"],
-  accessToken: string
+  accessToken: string,
+  onProgress?: (progress: number) => void,
+  onRequest?: (request: XMLHttpRequest | null) => void,
+  signal?: AbortSignal
 ): Promise<R2Upload> {
   const signResponse = await fetch("/api/mixes", {
     method: "POST",
@@ -604,6 +699,7 @@ async function uploadToR2(
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
+    signal,
     body: JSON.stringify({
       kind,
       fileName: file.name,
@@ -620,17 +716,84 @@ async function uploadToR2(
     throw new Error("The server returned an invalid upload response.");
   }
 
-  const uploadResponse = await fetch(signBody.uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": signBody.contentType },
-    body: file,
-  });
-  if (!uploadResponse.ok) {
-    throw new Error(
-      `R2 ${kind} upload failed (${uploadResponse.status}). Check the bucket CORS settings and try again.`
+  try {
+    await uploadFileWithProgress(
+      signBody.uploadUrl,
+      signBody.contentType,
+      file,
+      onProgress,
+      kind,
+      onRequest
     );
+  } catch (uploadError) {
+    try {
+      await deleteR2File(signBody.filePath, accessToken);
+    } catch (cleanupError) {
+      const uploadMessage =
+        uploadError instanceof Error ? uploadError.message : "Upload failed.";
+      throw new Error(
+        `${uploadMessage} The uploaded ${kind} file could not be cleaned up: ${
+          cleanupError instanceof Error
+            ? cleanupError.message
+            : "Unknown cleanup error."
+        }`
+      );
+    }
+    throw uploadError;
   }
   return signBody;
+}
+
+function uploadFileWithProgress(
+  url: string,
+  contentType: string,
+  file: File,
+  onProgress: ((progress: number) => void) | undefined,
+  kind: R2Upload["kind"],
+  onRequest?: (request: XMLHttpRequest | null) => void
+) {
+  return new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      onRequest?.(null);
+      callback();
+    };
+
+    request.open("PUT", url);
+    request.setRequestHeader("Content-Type", contentType);
+    onRequest?.(request);
+    request.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        onProgress?.(Math.round((event.loaded / event.total) * 100));
+      }
+    });
+    request.addEventListener("load", () => {
+      if (request.status >= 200 && request.status < 300) {
+        onProgress?.(100);
+        finish(resolve);
+      } else {
+        finish(() => reject(
+          new Error(
+            `R2 ${kind} upload failed (${request.status}). Check the bucket CORS settings and try again.`
+          )
+        ));
+      }
+    });
+    request.addEventListener("error", () =>
+      finish(() => reject(
+        new Error(
+          `Network or CORS error while uploading ${kind} to R2. Check the bucket CORS allowed origin and retry.`
+        )
+      ))
+    );
+    request.addEventListener("abort", () =>
+      finish(() => reject(new Error(`The ${kind} upload was canceled.`)))
+    );
+    request.send(file);
+  });
 }
 
 function getErrorMessage(value: unknown, fallback: string): string {
