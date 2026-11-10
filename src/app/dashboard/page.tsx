@@ -2,6 +2,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -306,12 +307,12 @@ export default function DashboardPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#08070b] px-6 py-12 text-white">
         <section className="w-full max-w-md border border-white/10 bg-white/[0.03] p-8">
-          <a
+          <Link
             href="/"
             className="text-sm text-purple-300 hover:text-purple-200"
           >
             ← Back to website
-          </a>
+          </Link>
 
           <p className="mt-8 text-xs font-bold uppercase tracking-[0.3em] text-purple-300">
             DJ Murphy · Management
@@ -375,12 +376,12 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-[#08070b] px-6 py-10 text-white sm:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <a
+          <Link
             href="/"
             className="text-sm text-purple-300 hover:text-purple-200"
           >
             ← Back to website
-          </a>
+          </Link>
         
                   <a
             href="/dashboard/mixes"
@@ -388,6 +389,12 @@ export default function DashboardPage() {
           >
             Manage mixes →
           </a>
+                  <a
+                    href="/dashboard/gigs"
+                    className="text-sm text-purple-300 hover:text-purple-200"
+                  >
+                    Manage gigs →
+                  </a>
 
           <button
             onClick={handleLogout}

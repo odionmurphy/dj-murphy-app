@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import MixPlayer from "./mix-player";
+import MixBanner from "./mix-banner";
 
 const mixColors = [
   { accent: "#c084fc", glow: "rgba(192,132,252,0.28)" },
@@ -25,15 +26,24 @@ export default async function MixesSection() {
   }
 
   return (
-    <section id="mixes" className="px-6 py-24">
+    <section
+      id="mixes"
+      className="hero-grid-background min-h-[70vh] px-6 py-16 text-[#111827] sm:py-24"
+    >
       <div className="mx-auto max-w-7xl">
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-300">
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-700">
           Listen
         </p>
-        <h1 className="mt-4 text-4xl font-black sm:text-6xl">HEAR THE SOUND.</h1>
+        <h1 className="mt-4 text-4xl font-black sm:text-6xl">
+          HEAR THE SOUND.
+        </h1>
+        <p className="mt-4 max-w-2xl leading-7 text-slate-600">
+          Listen to mixes and live sets, wherever you are.
+        </p>
+        <MixBanner />
 
         {!mixes?.length ? (
-          <p className="mt-12 text-white/50">
+          <p className="mt-12 rounded-2xl border border-indigo-100 bg-white/80 p-6 text-slate-600 shadow-sm">
             New mixes are on the way. Check back soon.
           </p>
         ) : (
@@ -49,7 +59,7 @@ export default async function MixesSection() {
               return (
                 <article
                   key={mix.id}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0d0b11] p-5 transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-[#110e17] sm:p-7"
+                  className="group relative overflow-hidden rounded-2xl border border-purple-200 bg-[#f1eaff] p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-950/10 sm:p-7"
                 >
                   <div
                     className="pointer-events-none absolute -right-12 -top-20 size-48 rounded-full opacity-[0.08] blur-3xl transition-opacity group-hover:opacity-20"
@@ -58,7 +68,7 @@ export default async function MixesSection() {
                   />
                   <div className="relative flex items-center gap-5">
                     <div
-                      className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 sm:size-32"
+                      className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 sm:size-32"
                       style={{
                         background: `radial-gradient(circle at 30% 20%, ${color.accent}88, transparent 48%), linear-gradient(145deg, #24202c, #100e14 72%)`,
                       }}
@@ -101,7 +111,7 @@ export default async function MixesSection() {
                         {mix.title}
                       </h2>
                       {mix.description && (
-                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/50">
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
                           {mix.description}
                         </p>
                       )}

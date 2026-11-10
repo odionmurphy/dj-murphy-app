@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 type Message = {
   role: "user" | "assistant";
@@ -15,6 +16,7 @@ const suggestions = [
 ];
 
 export default function AssistantChat() {
+  const isLightPage = ["/services", "/gigs", "/mixes"].includes(usePathname());
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -83,12 +85,22 @@ export default function AssistantChat() {
       {isOpen && (
         <section
           aria-label="DJ Murphy AI booking assistant"
-          className="flex h-[min(580px,75vh)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-purple-400/30 bg-[#100d18] text-white shadow-2xl shadow-purple-950/50"
+          className={`flex h-[min(580px,75vh)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border shadow-2xl ${
+            isLightPage
+              ? "border-indigo-200 bg-white text-slate-900 shadow-indigo-950/20"
+              : "border-purple-400/30 bg-[#100d18] text-white shadow-purple-950/50"
+          }`}
         >
-          <header className="flex items-center justify-between border-b border-white/10 bg-[#191225] p-4">
+          <header
+            className={`flex items-center justify-between border-b p-4 ${
+              isLightPage
+                ? "border-indigo-100 bg-[#f0f1ff]"
+                : "border-white/10 bg-[#191225]"
+            }`}
+          >
             <div>
               <p className="font-bold tracking-wide">DJ MURPHY</p>
-              <p className="mt-1 text-xs text-purple-300">
+              <p className={`mt-1 text-xs ${isLightPage ? "text-purple-700" : "text-purple-300"}`}>
                 AI Booking Assistant
               </p>
             </div>
@@ -97,7 +109,11 @@ export default function AssistantChat() {
               type="button"
               onClick={() => setIsOpen(false)}
               aria-label="Close chat"
-              className="rounded-lg px-3 py-2 text-xl text-white/70 hover:bg-white/10 hover:text-white"
+              className={`rounded-lg px-3 py-2 text-xl ${
+                isLightPage
+                  ? "text-slate-500 hover:bg-indigo-100 hover:text-slate-900"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
             >
               ×
             </button>
@@ -118,7 +134,9 @@ export default function AssistantChat() {
                   className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2.5 text-sm leading-6 ${
                     message.role === "user"
                       ? "rounded-br-sm bg-purple-600 text-white"
-                      : "rounded-bl-sm bg-white/[0.07] text-white/90"
+                      : isLightPage
+                        ? "rounded-bl-sm bg-indigo-50 text-slate-700"
+                        : "rounded-bl-sm bg-white/[0.07] text-white/90"
                   }`}
                 >
                   {message.content}
@@ -133,7 +151,11 @@ export default function AssistantChat() {
                     type="button"
                     key={suggestion}
                     onClick={() => void sendMessage(suggestion)}
-                    className="block w-full rounded-xl border border-purple-400/30 px-3 py-2 text-left text-sm text-purple-200 transition hover:bg-purple-500/10"
+                    className={`block w-full rounded-xl border px-3 py-2 text-left text-sm transition hover:bg-purple-500/10 ${
+                      isLightPage
+                        ? "border-purple-200 text-purple-700"
+                        : "border-purple-400/30 text-purple-200"
+                    }`}
                   >
                     {suggestion}
                   </button>
@@ -142,7 +164,7 @@ export default function AssistantChat() {
             )}
 
             {loading && (
-              <p className="text-sm text-purple-300">
+              <p className={`text-sm ${isLightPage ? "text-purple-700" : "text-purple-300"}`}>
                 DJ Murphy is typing...
               </p>
             )}
@@ -171,7 +193,9 @@ export default function AssistantChat() {
           </div>
 
           <form
-            className="border-t border-white/10 p-3"
+            className={`border-t p-3 ${
+              isLightPage ? "border-indigo-100" : "border-white/10"
+            }`}
             onSubmit={(event) => {
               event.preventDefault();
               void sendMessage(input);
@@ -195,7 +219,11 @@ export default function AssistantChat() {
                 aria-label="Your message"
                 rows={1}
                 maxLength={2000}
-                className="max-h-24 min-h-11 flex-1 resize-y rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none focus:border-purple-400"
+                className={`max-h-24 min-h-11 flex-1 resize-y rounded-xl border px-3 py-3 text-sm outline-none focus:border-purple-400 ${
+                  isLightPage
+                    ? "border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400"
+                    : "border-white/10 bg-black/30 text-white"
+                }`}
               />
 
               <button
@@ -207,7 +235,7 @@ export default function AssistantChat() {
               </button>
             </div>
 
-            <p className="mt-2 text-[10px] text-white/40">
+            <p className={`mt-2 text-[10px] ${isLightPage ? "text-slate-400" : "text-white/40"}`}>
               AI-generated answers may need verification. Bookings require
               submission through the website.
             </p>

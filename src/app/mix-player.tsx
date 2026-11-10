@@ -74,7 +74,7 @@ export default function MixPlayer({
   }
 
   return (
-    <div className="mt-7 rounded-2xl border border-white/10 bg-[#100e15] p-4 sm:p-5">
+    <div className="mt-7 rounded-2xl border border-purple-200 bg-[#e9ddff] p-4 sm:p-5">
       <audio
         ref={audioRef}
         preload="metadata"
@@ -136,7 +136,7 @@ export default function MixPlayer({
                   backgroundColor:
                     index / bars.length <= progress
                       ? accent
-                      : "rgba(255,255,255,0.2)",
+                      : "rgba(15,23,42,0.18)",
                 }}
               />
             ))}
@@ -157,10 +157,10 @@ export default function MixPlayer({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3 pl-1 text-xs tabular-nums text-white/55">
+      <div className="mt-3 flex items-center justify-between gap-3 pl-1 text-xs tabular-nums text-slate-600">
         <div className="flex items-center gap-2">
           <span>{formatTime(currentTime)}</span>
-          <span className="text-white/25">/</span>
+          <span className="text-slate-300">/</span>
           <span>{formatTime(duration)}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export default function MixPlayer({
             type="button"
             onClick={toggleMute}
             aria-label={muted ? "Unmute audio" : "Mute audio"}
-            className="rounded p-1 text-white/60 transition hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+            className="rounded p-1 text-slate-500 transition hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-purple-600"
           >
             {muted || volume === 0 ? (
               <VolumeX size={16} />

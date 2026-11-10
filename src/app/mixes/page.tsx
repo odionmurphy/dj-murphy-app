@@ -10,7 +10,11 @@ export const metadata: Metadata = {
 export default function MixesPage() {
   return (
     <Suspense
-      fallback={<p className="px-6 py-24 text-center text-white/50">Loading mixes...</p>}
+      fallback={
+        <p className="bg-[#f8f8ff] px-6 py-24 text-center text-slate-500">
+          Loading mixes...
+        </p>
+      }
     >
       <MixesSection />
     </Suspense>

@@ -19,13 +19,13 @@ export default function SiteNav() {
   const linkClass = (href: string) => {
     // Hash links like /#services never count as "current page"
     const active = !href.includes("#") && pathname === href;
-    return `text-xs font-bold uppercase tracking-widest transition hover:text-purple-400 ${
+    return `text-xs font-bold uppercase tracking-widest transition hover:text-purple-600 ${
       active ? "text-purple-400" : "text-white/70"
     }`;
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08070b]/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08070b]/95 text-white backdrop-blur">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
         <Link
           href="/"
@@ -64,7 +64,7 @@ export default function SiteNav() {
 
       {/* Mobile links */}
       {open && (
-        <div className="flex flex-col gap-5 border-t border-white/10 px-6 py-6 md:hidden">
+        <div className="flex flex-col gap-5 border-t border-white/10 bg-[#08070b] px-6 py-6 md:hidden">
           {links.map((link) => (
             <Link
               key={link.href}

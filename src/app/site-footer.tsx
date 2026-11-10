@@ -9,7 +9,7 @@ export default function SiteFooter() {
   if (pathname.startsWith("/dashboard")) return null;
 
   return (
-    <footer className="border-t border-white/10 px-6 py-10">
+    <footer className="border-t border-white/10 bg-[#08070b] px-6 py-10 text-white">
       <div className="mx-auto grid max-w-7xl items-center gap-6 text-center md:grid-cols-3 md:text-left">
         <Link href="/" className="text-xl font-black tracking-[0.2em]">
           DJ <span className="text-purple-400">MURPHY</span>
