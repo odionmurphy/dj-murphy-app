@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import GigVideoPlayer from "./gig-video-player";
 
 export default async function GigsSection() {
   // Marks this component as request-time so "today" isn't frozen at build time
@@ -50,7 +51,24 @@ export default async function GigsSection() {
                 key={gig.id}
                 className="overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 shadow-sm transition hover:shadow-md"
               >
-                {gig.image_path && (
+                {gig.video_path ? (
+                  <GigVideoPlayer
+                    src={getR2PublicUrl(gig.video_path)}
+                    title={gig.title}
+                    type={
+                      gig.video_path.toLowerCase().endsWith(".webm")
+                        ? "video/webm"
+                        : "video/mp4"
+                    }
+                    poster={
+                      gig.image_path
+                        ? supabase.storage
+                            .from("gig-images")
+                            .getPublicUrl(gig.image_path).data.publicUrl
+                        : undefined
+                    }
+                  />
+                ) : gig.image_path ? (
                   <div className="relative aspect-[16/7] w-full bg-slate-200 sm:aspect-[16/5]">
                     {/* Supabase Storage URLs are configured per project at runtime. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -62,7 +80,7 @@ export default async function GigsSection() {
                       className="absolute inset-0 h-full w-full object-cover"
                     />
                   </div>
-                )}
+                ) : null}
                 <div className="flex flex-wrap items-center justify-between gap-5 p-5 sm:p-6">
                   <div className="flex min-w-0 flex-1 items-center gap-5 sm:gap-8">
                     <time
@@ -102,4 +120,20 @@ export default async function GigsSection() {
       </div>
     </section>
   );
+}
+
+function getR2PublicUrl(filePath: string) {
+  const publicUrl = process.env.R2_PUBLIC_URL;
+  if (!publicUrl) {
+    throw new Error(
+      "R2_PUBLIC_URL must be configured to play gig videos."
+    );
+  }
+
+  const baseUrl = new URL(publicUrl);
+  const encodedPath = filePath.split("/").map(encodeURIComponent).join("/");
+  return new URL(
+    encodedPath,
+    `${baseUrl.toString().replace(/\/+$/, "")}/`
+  ).toString();
 }

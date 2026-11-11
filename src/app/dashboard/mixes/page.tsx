@@ -8,14 +8,19 @@ import {
   MAX_MIX_ARTWORK_BYTES,
   MAX_MIX_AUDIO_BYTES,
 } from "@/lib/mix-upload";
+import {
+  isLiveVideoExtension,
+  MAX_LIVE_VIDEO_BYTES,
+} from "@/lib/video-upload";
 
 const BUCKET = "mixes";
+const VIDEO_TABLE = "mix_videos";
 
 type R2Upload = {
   uploadUrl: string;
   filePath: string;
   contentType: string;
-  kind: "audio" | "artwork";
+  kind: "audio" | "artwork" | "video";
 };
 
 type Mix = {
@@ -31,11 +36,24 @@ type Mix = {
 
 type Access = "checking" | "signed-out" | "denied" | "ready";
 
+type LiveVideo = {
+  id: string;
+  title: string;
+  description: string | null;
+  file_path: string;
+  size_bytes: number;
+  created_at: string;
+};
+
 export default function ManageMixesPage() {
+  const videoFileInput = useRef<HTMLInputElement | null>(null);
   const activeUploadRequest = useRef<XMLHttpRequest | null>(null);
   const uploadAbortController = useRef<AbortController | null>(null);
+  const activeVideoUploadRequest = useRef<XMLHttpRequest | null>(null);
+  const videoUploadAbortController = useRef<AbortController | null>(null);
   const [access, setAccess] = useState<Access>("checking");
   const [mixes, setMixes] = useState<Mix[]>([]);
+  const [videos, setVideos] = useState<LiveVideo[]>([]);
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("");
   const [description, setDescription] = useState("");
@@ -47,6 +65,16 @@ export default function ManageMixesPage() {
   const [uploadStage, setUploadStage] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
+  const [videoDescription, setVideoDescription] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(
+    null
+  );
+  const [videoUploadStage, setVideoUploadStage] = useState("");
+  const [canCancelVideoUpload, setCanCancelVideoUpload] = useState(false);
+  const [removingVideoId, setRemovingVideoId] = useState<string | null>(null);
 
   const loadMixes = useCallback(async () => {
     const { data, error: loadError } = await supabase
@@ -59,6 +87,22 @@ export default function ManageMixesPage() {
       return;
     }
     setMixes((data ?? []) as Mix[]);
+  }, []);
+
+  const loadVideos = useCallback(async () => {
+    const { data, error: loadError } = await supabase
+      .from(VIDEO_TABLE)
+      .select("id, title, description, file_path, size_bytes, created_at")
+      .order("created_at", { ascending: false });
+
+    if (loadError) {
+      setError(
+        `${loadError.message}. If this is the first video upload, run the mix video setup migration in Supabase.`
+      );
+      return;
+    }
+
+    setVideos((data ?? []) as LiveVideo[]);
   }, []);
 
   useEffect(() => {
@@ -85,7 +129,7 @@ export default function ManageMixesPage() {
         return;
       }
 
-      await loadMixes();
+      await Promise.all([loadMixes(), loadVideos()]);
       if (active) setAccess("ready");
     }
 
@@ -93,7 +137,182 @@ export default function ManageMixesPage() {
     return () => {
       active = false;
     };
-  }, [loadMixes]);
+  }, [loadMixes, loadVideos]);
+
+  function handleVideoFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setError("");
+    setNotice("");
+    const chosen = event.target.files?.[0] ?? null;
+    if (!chosen) {
+      setVideoFile(null);
+      return;
+    }
+
+    const extension = chosen.name.split(".").pop()?.toLowerCase();
+    if (!isLiveVideoExtension(extension)) {
+      setError("Please choose an MP4 or WebM video file.");
+      event.target.value = "";
+      setVideoFile(null);
+      return;
+    }
+    if (
+      chosen.type &&
+      chosen.type !== (extension === "mp4" ? "video/mp4" : "video/webm")
+    ) {
+      setError("The selected video type does not match its file extension.");
+      event.target.value = "";
+      setVideoFile(null);
+      return;
+    }
+    if (chosen.size > MAX_LIVE_VIDEO_BYTES) {
+      setError("Live-set videos must be 5 GB or smaller.");
+      event.target.value = "";
+      setVideoFile(null);
+      return;
+    }
+
+    setVideoFile(chosen);
+  }
+
+  async function handleVideoUpload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!videoFile || videoUploading || uploading) return;
+
+    const controller = new AbortController();
+    videoUploadAbortController.current = controller;
+    setVideoUploading(true);
+    setCanCancelVideoUpload(true);
+    setVideoUploadProgress(0);
+    setVideoUploadStage("Preparing video upload...");
+    setError("");
+    setNotice("");
+
+    let uploadedVideo: R2Upload | null = null;
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error("Please sign in again to upload a live set.");
+
+      setVideoUploadStage("Uploading live-set video...");
+      uploadedVideo = await uploadToR2(
+        videoFile,
+        "video",
+        session.access_token,
+        setVideoUploadProgress,
+        (request) => {
+          activeVideoUploadRequest.current = request;
+          setCanCancelVideoUpload(request !== null);
+        },
+        controller.signal
+      );
+
+      setVideoUploadStage("Saving live-set details...");
+      setVideoUploadProgress(null);
+      const { data, error: insertError } = await supabase
+        .from(VIDEO_TABLE)
+        .insert({
+          title: videoTitle.trim(),
+          description: videoDescription.trim() || null,
+          file_path: uploadedVideo.filePath,
+          size_bytes: videoFile.size,
+        })
+        .select("id, title, description, file_path, size_bytes, created_at")
+        .single();
+
+      if (insertError) throw insertError;
+      if (!data) throw new Error("The video uploaded but its details were not saved.");
+
+      setVideos((current) => [data as LiveVideo, ...current]);
+      setVideoTitle("");
+      setVideoDescription("");
+      setVideoFile(null);
+      if (videoFileInput.current) videoFileInput.current.value = "";
+      setNotice("Live-set video is now featured on the Mixes page.");
+    } catch (uploadError) {
+      if (uploadedVideo) {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session) {
+            await deleteR2File(uploadedVideo.filePath, session.access_token);
+          }
+        } catch (cleanupError) {
+          console.error("Could not clean up an unlisted live-set video:", cleanupError);
+        }
+      }
+      setError(
+        controller.signal.aborted
+          ? "Live-set video upload canceled."
+          : uploadError instanceof Error
+            ? uploadError.message
+            : "Could not upload the live-set video."
+      );
+    } finally {
+      setVideoUploading(false);
+      setCanCancelVideoUpload(false);
+      setVideoUploadProgress(null);
+      setVideoUploadStage("");
+      activeVideoUploadRequest.current = null;
+      videoUploadAbortController.current = null;
+    }
+  }
+
+  function cancelVideoUpload() {
+    setCanCancelVideoUpload(false);
+    setVideoUploadStage("Canceling video upload...");
+    videoUploadAbortController.current?.abort();
+    activeVideoUploadRequest.current?.abort();
+  }
+
+  async function handleDeleteVideo(video: LiveVideo) {
+    if (!window.confirm(`Delete "${video.title}"? This can't be undone.`)) return;
+
+    setError("");
+    setNotice("");
+    setRemovingVideoId(video.id);
+
+    const { data, error: rowError } = await supabase
+      .from(VIDEO_TABLE)
+      .delete()
+      .eq("id", video.id)
+      .select("id")
+      .maybeSingle();
+
+    if (rowError) {
+      setError(rowError.message);
+      setRemovingVideoId(null);
+      return;
+    }
+    if (!data) {
+      setError("The live-set entry was not deleted. Check admin permissions.");
+      setRemovingVideoId(null);
+      return;
+    }
+
+    setVideos((current) => current.filter((item) => item.id !== video.id));
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error("Please sign in again to delete the video file.");
+      await deleteR2File(video.file_path, session.access_token);
+      setNotice("Live-set video deleted.");
+    } catch (deleteError) {
+      setError(
+        `The live-set was removed from the page, but its video file could not be deleted: ${
+          deleteError instanceof Error ? deleteError.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setRemovingVideoId(null);
+    }
+  }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     setError("");
@@ -237,7 +456,7 @@ export default function ManageMixesPage() {
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file || uploading) return;
+    if (!file || uploading || videoUploading) return;
 
     const abortController = new AbortController();
     uploadAbortController.current = abortController;
@@ -494,8 +713,8 @@ export default function ManageMixesPage() {
         </p>
         <h1 className="mt-3 text-4xl font-black">Mixes</h1>
         <p className="mt-3 text-white/50">
-          Upload an MP3, M4A, or AAC mix directly to Cloudflare R2 (up to 5 GB).
-          Visitors can play it on the Mixes page.
+          Upload audio mixes and live-set videos directly to Cloudflare R2.
+          They appear on the Mixes page after upload.
         </p>
 
         {error && (
@@ -602,7 +821,7 @@ export default function ManageMixesPage() {
 
           <button
             type="submit"
-            disabled={uploading || !file}
+            disabled={uploading || videoUploading || !file}
             className="w-full bg-purple-600 px-5 py-3 font-bold transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {uploading
@@ -621,6 +840,139 @@ export default function ManageMixesPage() {
             </button>
           )}
         </form>
+
+        <section className="mt-12">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-300">
+            Promote a performance
+          </p>
+          <h2 className="mt-3 text-2xl font-black">Add a live-set video</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">
+            Upload an MP4 or WebM recording. It will be featured with a video
+            player on the public Mixes page. Maximum file size: 5 GB.
+          </p>
+
+          <form
+            onSubmit={handleVideoUpload}
+            className="mt-5 space-y-5 border border-white/10 bg-white/[0.03] p-6"
+          >
+            <label className="block text-sm text-white/70">
+              Video title *
+              <input
+                required
+                maxLength={120}
+                value={videoTitle}
+                onChange={(event) => setVideoTitle(event.target.value)}
+                placeholder="Live at Summer Festival"
+                className="mt-2 w-full border border-white/15 bg-black/40 px-4 py-3 text-white outline-none focus:border-purple-400"
+              />
+            </label>
+
+            <label className="block text-sm text-white/70">
+              Description (optional)
+              <textarea
+                rows={3}
+                maxLength={500}
+                value={videoDescription}
+                onChange={(event) => setVideoDescription(event.target.value)}
+                placeholder="A highlight from my live set..."
+                className="mt-2 w-full resize-y border border-white/15 bg-black/40 px-4 py-3 text-white outline-none focus:border-purple-400"
+              />
+            </label>
+
+            <label className="block text-sm text-white/70">
+              Live-set video *
+              <input
+                ref={videoFileInput}
+                type="file"
+                required
+                accept="video/mp4,video/webm,.mp4,.webm"
+                onChange={handleVideoFileChange}
+                className="mt-2 block w-full text-sm text-white/70 file:mr-4 file:border-0 file:bg-purple-600 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-purple-500"
+              />
+            </label>
+
+            {videoFile && (
+              <p className="text-xs text-white/50">
+                {videoFile.name} ·{" "}
+                {(videoFile.size / 1024 / 1024).toFixed(1)} MB
+              </p>
+            )}
+
+            {videoUploading && (
+              <div className="space-y-2" role="status" aria-live="polite">
+                <div className="flex items-center justify-between gap-3 text-xs text-white/60">
+                  <span>{videoUploadStage}</span>
+                  {videoUploadProgress !== null && (
+                    <span>{videoUploadProgress}%</span>
+                  )}
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  {videoUploadProgress === null ? (
+                    <div className="h-full w-1/3 animate-pulse rounded-full bg-purple-400" />
+                  ) : (
+                    <div
+                      className="h-full rounded-full bg-purple-500 transition-[width] duration-200"
+                      style={{ width: `${videoUploadProgress}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={uploading || videoUploading || !videoFile}
+              className="w-full bg-purple-600 px-5 py-3 font-bold transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {videoUploading
+                ? videoUploadProgress === null
+                  ? videoUploadStage
+                  : `Uploading video... ${videoUploadProgress}%`
+                : "Publish live set"}
+            </button>
+            {videoUploading && canCancelVideoUpload && (
+              <button
+                type="button"
+                onClick={cancelVideoUpload}
+                className="w-full border border-white/15 px-5 py-3 text-sm text-white/70 transition hover:border-red-400/50 hover:text-red-300"
+              >
+                Cancel video upload
+              </button>
+            )}
+          </form>
+        </section>
+
+        <h2 className="mt-12 text-xl font-bold">
+          Live-set videos ({videos.length})
+        </h2>
+        {videos.length === 0 ? (
+          <p className="mt-4 text-sm text-white/50">
+            No live-set videos published yet.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {videos.map((video) => (
+              <li
+                key={video.id}
+                className="flex flex-wrap items-center justify-between gap-3 border border-white/10 p-4"
+              >
+                <div>
+                  <p className="font-bold">{video.title}</p>
+                  <p className="text-xs text-white/45">
+                    {(video.size_bytes / 1024 / 1024).toFixed(1)} MB · Live set
+                  </p>
+                </div>
+                <button
+                  onClick={() => void handleDeleteVideo(video)}
+                  disabled={removingVideoId === video.id || videoUploading}
+                  className="border border-red-400/40 px-4 py-2 text-sm text-red-300 hover:bg-red-400/10 disabled:opacity-50"
+                >
+                  {removingVideoId === video.id ? "Deleting..." : "Delete video"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <h2 className="mt-12 text-xl font-bold">Uploaded mixes ({mixes.length})</h2>
 
@@ -681,7 +1033,9 @@ function isR2Upload(value: unknown): value is R2Upload {
     "contentType" in value &&
     typeof value.contentType === "string" &&
     "kind" in value &&
-    (value.kind === "audio" || value.kind === "artwork")
+    (value.kind === "audio" ||
+      value.kind === "artwork" ||
+      value.kind === "video")
   );
 }
 

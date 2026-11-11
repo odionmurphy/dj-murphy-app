@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  isLiveVideoExtension,
+  MAX_LIVE_VIDEO_BYTES,
+} from "@/lib/video-upload";
+
+type VideoUpload = {
+  uploadUrl: string;
+  filePath: string;
+  contentType: string;
+  kind: "video";
+};
 
 type Gig = {
   id: string;
@@ -12,6 +23,7 @@ type Gig = {
   city: string;
   ticket_url: string | null;
   image_path: string | null;
+  video_path: string | null;
 };
 
 type GigDraft = {
@@ -35,6 +47,7 @@ const emptyDraft: GigDraft = {
 const IMAGE_BUCKET = "gig-images";
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_GIG_VIDEO_BYTES = MAX_LIVE_VIDEO_BYTES;
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (
@@ -54,13 +67,21 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function ManageGigsPage() {
+  const videoFileInput = useRef<HTMLInputElement | null>(null);
+  const uploadController = useRef<AbortController | null>(null);
+  const uploadRequest = useRef<XMLHttpRequest | null>(null);
   const [access, setAccess] = useState<Access>("checking");
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [draft, setDraft] = useState<GigDraft>(emptyDraft);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [checkingVideo, setCheckingVideo] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadStage, setUploadStage] = useState("");
+  const [canCancelUpload, setCanCancelUpload] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -68,7 +89,7 @@ export default function ManageGigsPage() {
   const loadGigs = useCallback(async () => {
     const { data, error: loadError } = await supabase
       .from("gigs")
-      .select("id, date, title, venue, city, ticket_url, image_path")
+      .select("id, date, title, venue, city, ticket_url, image_path, video_path")
       .order("date", { ascending: true });
 
     if (loadError) {
@@ -126,6 +147,9 @@ export default function ManageGigsPage() {
   function startNewGig() {
     setDraft(emptyDraft);
     setImageFile(null);
+    setVideoFile(null);
+    setCheckingVideo(false);
+    if (videoFileInput.current) videoFileInput.current.value = "";
     setEditingId(null);
     setFormOpen(true);
     setError("");
@@ -141,21 +165,69 @@ export default function ManageGigsPage() {
       ticket_url: gig.ticket_url ?? "",
     });
     setImageFile(null);
+    setVideoFile(null);
+    setCheckingVideo(false);
+    if (videoFileInput.current) videoFileInput.current.value = "";
     setEditingId(gig.id);
     setFormOpen(true);
     setError("");
     setNotice("");
   }
 
+  async function handleGigVideoChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const input = event.currentTarget;
+    const chosen = input.files?.[0] ?? null;
+    setError("");
+    setNotice("");
+    setVideoFile(null);
+    if (!chosen) return;
+
+    const extension = chosen.name.split(".").pop()?.toLowerCase();
+    if (
+      !isLiveVideoExtension(extension) ||
+      (chosen.type &&
+        chosen.type !==
+          (extension === "mp4" ? "video/mp4" : "video/webm")) ||
+      chosen.size > MAX_GIG_VIDEO_BYTES
+    ) {
+      setError("Choose an MP4 or WebM video up to 5 GB.");
+      input.value = "";
+      return;
+    }
+
+    setCheckingVideo(true);
+    try {
+      await verifyVideoHasPicture(chosen);
+      setVideoFile(chosen);
+    } catch (videoError) {
+      setError(getErrorMessage(videoError, "Could not read the selected video."));
+      input.value = "";
+    } finally {
+      setCheckingVideo(false);
+    }
+  }
+
   async function saveGig(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (checkingVideo) return;
     setSaving(true);
+    setUploadProgress(null);
+    setUploadStage("");
     setError("");
     setNotice("");
 
     let uploadedImagePath: string | null = null;
+    let uploadedVideoPath: string | null = null;
+    const currentGig = editingId
+      ? gigs.find((gig) => gig.id === editingId)
+      : undefined;
     const oldImagePath = editingId
-      ? gigs.find((gig) => gig.id === editingId)?.image_path ?? null
+      ? currentGig?.image_path ?? null
+      : null;
+    const oldVideoPath = editingId
+      ? currentGig?.video_path ?? null
       : null;
     const values = {
       date: draft.date,
@@ -166,6 +238,46 @@ export default function ManageGigsPage() {
     };
 
     try {
+      if (videoFile) {
+        const extension = videoFile.name.split(".").pop()?.toLowerCase();
+        if (
+          !isLiveVideoExtension(extension) ||
+          (videoFile.type &&
+            videoFile.type !==
+              (extension === "mp4" ? "video/mp4" : "video/webm")) ||
+          videoFile.size > MAX_GIG_VIDEO_BYTES
+        ) {
+          throw new Error("Choose an MP4 or WebM video up to 5 GB.");
+        }
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) throw new Error("Please sign in again to upload a gig video.");
+
+        const controller = new AbortController();
+        uploadController.current = controller;
+        setCanCancelUpload(true);
+        setUploadStage("Preparing video upload...");
+        const uploadedVideo = await uploadVideoToR2(
+          videoFile,
+          session.access_token,
+          controller.signal,
+          setUploadProgress,
+          (request) => {
+            uploadRequest.current = request;
+            setCanCancelUpload(request !== null);
+            if (request) setUploadStage("Uploading event video...");
+          }
+        );
+        uploadedVideoPath = uploadedVideo.filePath;
+        uploadRequest.current = null;
+        setCanCancelUpload(false);
+        setUploadStage("Saving gig details...");
+      }
+
       if (imageFile) {
         const extension = imageFile.name.split(".").pop()?.toLowerCase();
         const validExtension = ["jpg", "jpeg", "png", "webp"].includes(
@@ -194,6 +306,7 @@ export default function ManageGigsPage() {
       const gigValues = {
         ...values,
         ...(uploadedImagePath ? { image_path: uploadedImagePath } : {}),
+        ...(uploadedVideoPath ? { video_path: uploadedVideoPath } : {}),
       };
       const result = editingId
         ? await supabase
@@ -212,6 +325,10 @@ export default function ManageGigsPage() {
       }
 
       if (uploadedImagePath) setImageFile(null);
+      if (uploadedVideoPath) {
+        setVideoFile(null);
+        if (videoFileInput.current) videoFileInput.current.value = "";
+      }
       setFormOpen(false);
       setEditingId(null);
       setDraft(emptyDraft);
@@ -228,6 +345,21 @@ export default function ManageGigsPage() {
           );
         }
       }
+      if (uploadedVideoPath && oldVideoPath) {
+        try {
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
+          if (!session) throw new Error("Please sign in again to remove the old video.");
+          await deleteGigVideo(oldVideoPath, session.access_token);
+        } catch (cleanupError) {
+          setError(
+            `Gig saved, but its previous video could not be deleted: ${getErrorMessage(cleanupError, "Unknown error.")}`
+          );
+        }
+      }
     } catch (saveError) {
       if (uploadedImagePath) {
         const { error: cleanupError } = await supabase.storage
@@ -237,10 +369,35 @@ export default function ManageGigsPage() {
           console.error("Could not remove unused gig image:", cleanupError.message);
         }
       }
+      if (uploadedVideoPath) {
+        try {
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
+          if (!session) throw new Error("Session expired before video cleanup.");
+          await deleteGigVideo(uploadedVideoPath, session.access_token);
+        } catch (cleanupError) {
+          console.error("Could not remove unused gig video:", cleanupError);
+        }
+      }
       setError(getErrorMessage(saveError, "Could not save gig."));
     } finally {
       setSaving(false);
+      setCanCancelUpload(false);
+      setUploadProgress(null);
+      setUploadStage("");
+      uploadController.current = null;
+      uploadRequest.current = null;
     }
+  }
+
+  function cancelVideoUpload() {
+    setCanCancelUpload(false);
+    setUploadStage("Canceling video upload...");
+    uploadController.current?.abort();
+    uploadRequest.current?.abort();
   }
 
   async function removeGig(gig: Gig) {
@@ -280,6 +437,21 @@ export default function ManageGigsPage() {
         if (imageError) {
           setError(
             `Gig removed, but its image could not be deleted: ${imageError.message}`
+          );
+        }
+      }
+      if (gig.video_path) {
+        try {
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
+          if (!session) throw new Error("Please sign in again to delete the video.");
+          await deleteGigVideo(gig.video_path, session.access_token);
+        } catch (videoError) {
+          setError(
+            `Gig removed, but its video could not be deleted: ${getErrorMessage(videoError, "Unknown error.")}`
           );
         }
       }
@@ -380,6 +552,11 @@ export default function ManageGigsPage() {
                   className="mt-2 w-full border border-white/15 bg-black/40 px-4 py-3 text-white outline-none focus:border-purple-400"
                 />
               </label>
+              {checkingVideo && (
+                <p className="text-sm text-purple-200" role="status">
+                  Checking that this file contains playable video...
+                </p>
+              )}
               <label className="block text-sm text-white/70">
                 Event name *
                 <input
@@ -452,21 +629,68 @@ export default function ManageGigsPage() {
                   " Choose a new image to replace the current one."}
               </span>
             </label>
+            <label className="block text-sm text-white/70">
+              Event video (optional)
+              <input
+                ref={videoFileInput}
+                type="file"
+                accept="video/mp4,video/webm,.mp4,.webm"
+                onChange={(event) => void handleGigVideoChange(event)}
+                className="mt-2 block w-full text-sm text-white/70 file:mr-4 file:border-0 file:bg-purple-600 file:px-4 file:py-3 file:font-bold file:text-white hover:file:bg-purple-500"
+              />
+              <span className="mt-2 block text-xs text-white/40">
+                MP4 or WebM with a visible video track, up to 5 GB. H.264/AAC
+                MP4 is recommended.
+                {editingId &&
+                  gigs.find((gig) => gig.id === editingId)?.video_path &&
+                  !videoFile &&
+                  " Choose another video to replace the current one."}
+              </span>
+            </label>
+            {videoFile && (
+              <p className="text-xs text-white/50">
+                {videoFile.name} · {(videoFile.size / 1024 / 1024).toFixed(1)} MB
+              </p>
+            )}
+            {saving && uploadStage && (
+              <div className="space-y-2" role="status" aria-live="polite">
+                <div className="flex items-center justify-between gap-3 text-xs text-white/60">
+                  <span>{uploadStage}</span>
+                  {uploadProgress !== null && <span>{uploadProgress}%</span>}
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  {uploadProgress === null ? (
+                    <div className="h-full w-1/3 animate-pulse rounded-full bg-purple-400" />
+                  ) : (
+                    <div
+                      className="h-full rounded-full bg-purple-500 transition-[width] duration-200"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving && !canCancelUpload}
                 className="bg-purple-600 px-5 py-3 text-sm font-bold hover:bg-purple-500 disabled:opacity-50"
               >
-                {saving ? "Saving..." : editingId ? "Save changes" : "Add gig"}
+                {saving
+                  ? uploadStage || "Saving..."
+                  : editingId
+                    ? "Save changes"
+                    : "Add gig"}
               </button>
               <button
                 type="button"
-                onClick={() => setFormOpen(false)}
-                disabled={saving}
+                onClick={saving && canCancelUpload
+                  ? cancelVideoUpload
+                  : () => setFormOpen(false)}
+                disabled={saving || checkingVideo}
                 className="border border-white/15 px-5 py-3 text-sm hover:border-white/40"
               >
-                Cancel
+                {saving && canCancelUpload ? "Cancel upload" : "Cancel"}
               </button>
             </div>
           </form>
@@ -511,6 +735,11 @@ export default function ManageGigsPage() {
                   <p className="mt-1 text-sm text-white/50">
                     {gig.venue} · {gig.city}
                   </p>
+                  {gig.video_path && (
+                    <p className="mt-2 text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Event video added
+                    </p>
+                  )}
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -535,4 +764,206 @@ export default function ManageGigsPage() {
       </div>
     </main>
   );
+}
+
+function verifyVideoHasPicture(file: File) {
+  const video = document.createElement("video");
+  const objectUrl = URL.createObjectURL(file);
+  video.preload = "metadata";
+
+  return new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      finish(
+        () =>
+          reject(
+            new Error(
+              "The browser could not inspect this video. Export it as MP4 (H.264 video with AAC audio) and try again."
+            )
+          )
+      );
+    }, 15000);
+
+    const finish = (callback: () => void) => {
+      window.clearTimeout(timeout);
+      video.removeAttribute("src");
+      video.load();
+      URL.revokeObjectURL(objectUrl);
+      callback();
+    };
+
+    video.addEventListener(
+      "loadedmetadata",
+      () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          finish(resolve);
+        } else {
+          finish(() =>
+            reject(
+              new Error(
+                "This file has audio but no visible video track. Choose a video recording, or export as MP4 (H.264/AAC)."
+              )
+            )
+          );
+        }
+      },
+      { once: true }
+    );
+    video.addEventListener(
+      "error",
+      () => {
+        finish(() =>
+          reject(
+            new Error(
+              "This browser cannot decode the selected video. Re-export it as MP4 using H.264 video and AAC audio."
+            )
+          )
+        );
+      },
+      { once: true }
+    );
+
+    video.src = objectUrl;
+  });
+}
+
+async function uploadVideoToR2(
+  file: File,
+  accessToken: string,
+  signal: AbortSignal,
+  onProgress: (progress: number) => void,
+  onRequest: (request: XMLHttpRequest | null) => void
+): Promise<VideoUpload> {
+  const response = await fetch("/api/mixes", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    signal,
+    body: JSON.stringify({
+      kind: "video",
+      fileName: file.name,
+      sizeBytes: file.size,
+    }),
+  });
+  const body: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      body &&
+        typeof body === "object" &&
+        "error" in body &&
+        typeof body.error === "string"
+        ? body.error
+        : "Could not prepare the gig video upload."
+    );
+  }
+  if (!isVideoUpload(body)) {
+    throw new Error("The server returned an invalid video upload response.");
+  }
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      let settled = false;
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        onRequest(null);
+        callback();
+      };
+
+      request.open("PUT", body.uploadUrl);
+      request.setRequestHeader("Content-Type", body.contentType);
+      onRequest(request);
+      request.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+      request.addEventListener("load", () => {
+        if (request.status >= 200 && request.status < 300) {
+          onProgress(100);
+          finish(resolve);
+        } else {
+          finish(() =>
+            reject(
+              new Error(
+                `R2 video upload failed (${request.status}). Check the R2 bucket CORS settings.`
+              )
+            )
+          );
+        }
+      });
+      request.addEventListener("error", () =>
+        finish(
+          () =>
+            reject(
+              new Error(
+                "Network or CORS error uploading the event video to R2."
+              )
+            )
+        )
+      );
+      request.addEventListener("abort", () =>
+        finish(() => reject(new Error("Gig video upload canceled.")))
+      );
+      if (signal.aborted) {
+        request.abort();
+        return;
+      }
+      signal.addEventListener("abort", () => request.abort(), { once: true });
+      request.send(file);
+    });
+  } catch (uploadError) {
+    try {
+      await deleteGigVideo(body.filePath, accessToken);
+    } catch (cleanupError) {
+      throw new Error(
+        `${getErrorMessage(uploadError, "Video upload failed.")} The partial video could not be removed from R2: ${getErrorMessage(cleanupError, "Unknown cleanup error.")}`
+      );
+    }
+    throw uploadError;
+  }
+
+  return body;
+}
+
+function isVideoUpload(value: unknown): value is VideoUpload {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    "uploadUrl" in value &&
+    typeof value.uploadUrl === "string" &&
+    "filePath" in value &&
+    typeof value.filePath === "string" &&
+    value.filePath.startsWith("r2/videos/") &&
+    "contentType" in value &&
+    typeof value.contentType === "string" &&
+    "kind" in value &&
+    value.kind === "video"
+  );
+}
+
+async function deleteGigVideo(filePath: string, accessToken: string) {
+  const response = await fetch("/api/mixes", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ filePath }),
+  });
+
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    throw new Error(
+      body &&
+        typeof body === "object" &&
+        "error" in body &&
+        typeof body.error === "string"
+        ? body.error
+        : "Could not delete the gig video from R2."
+    );
+  }
 }

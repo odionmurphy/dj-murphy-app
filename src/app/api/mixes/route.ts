@@ -14,6 +14,11 @@ import {
   MIX_ARTWORK_CONTENT_TYPES,
   MIX_AUDIO_CONTENT_TYPES,
 } from "@/lib/mix-upload";
+import {
+  isLiveVideoExtension,
+  LIVE_VIDEO_CONTENT_TYPES,
+  MAX_LIVE_VIDEO_BYTES,
+} from "@/lib/video-upload";
 
 function getR2Config() {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -129,7 +134,9 @@ export async function POST(request: Request) {
     !body ||
     typeof body !== "object" ||
     !("kind" in body) ||
-    (body.kind !== "audio" && body.kind !== "artwork") ||
+    (body.kind !== "audio" &&
+      body.kind !== "artwork" &&
+      body.kind !== "video") ||
     !("fileName" in body) ||
     typeof body.fileName !== "string" ||
     body.fileName.length > 255 ||
@@ -138,14 +145,26 @@ export async function POST(request: Request) {
     !Number.isSafeInteger(body.sizeBytes) ||
     body.sizeBytes <= 0 ||
     body.sizeBytes >
-      (body.kind === "audio" ? MAX_MIX_AUDIO_BYTES : MAX_MIX_ARTWORK_BYTES)
+      (body.kind === "audio"
+        ? MAX_MIX_AUDIO_BYTES
+        : body.kind === "video"
+          ? MAX_LIVE_VIDEO_BYTES
+          : MAX_MIX_ARTWORK_BYTES)
   ) {
     return NextResponse.json(
       {
         error:
-          body && typeof body === "object" && "kind" in body && body.kind === "artwork"
+          body &&
+          typeof body === "object" &&
+          "kind" in body &&
+          body.kind === "artwork"
             ? "Choose an image no larger than 10 MB."
-            : "Choose an audio file no larger than 5 GB.",
+            : body &&
+                typeof body === "object" &&
+                "kind" in body &&
+                body.kind === "video"
+              ? "Choose an MP4 or WebM video no larger than 5 GB."
+              : "Choose an audio file no larger than 5 GB.",
       },
       { status: 400 }
     );
@@ -161,7 +180,7 @@ export async function POST(request: Request) {
       );
     }
     contentType = MIX_AUDIO_CONTENT_TYPES[extension];
-  } else {
+  } else if (body.kind === "artwork") {
     if (!isMixArtworkExtension(extension)) {
       return NextResponse.json(
         { error: "Please choose a JPG, PNG, or WebP image." },
@@ -169,8 +188,16 @@ export async function POST(request: Request) {
       );
     }
     contentType = MIX_ARTWORK_CONTENT_TYPES[extension];
+  } else {
+    if (!isLiveVideoExtension(extension)) {
+      return NextResponse.json(
+        { error: "Please choose an MP4 or WebM video." },
+        { status: 400 }
+      );
+    }
+    contentType = LIVE_VIDEO_CONTENT_TYPES[extension];
   }
-  const filePath = `r2/${body.kind === "artwork" ? "artwork/" : ""}${crypto.randomUUID()}.${extension}`;
+  const filePath = `r2/${body.kind === "artwork" ? "artwork/" : body.kind === "video" ? "videos/" : ""}${crypto.randomUUID()}.${extension}`;
 
   try {
     if (!process.env.R2_PUBLIC_URL) {
@@ -217,12 +244,12 @@ export async function DELETE(request: Request) {
     typeof body !== "object" ||
     !("filePath" in body) ||
     typeof body.filePath !== "string" ||
-    !/^r2\/(?:artwork\/)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(mp3|m4a|aac|jpg|jpeg|png|webp)$/i.test(
+    !/^r2\/(?:artwork\/|videos\/)?[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(mp3|m4a|aac|jpg|jpeg|png|webp|mp4|webm)$/i.test(
       body.filePath
     )
   ) {
     return NextResponse.json(
-      { error: "A valid R2 mix file path is required." },
+      { error: "A valid R2 mix, cover, or video file path is required." },
       { status: 400 }
     );
   }
@@ -236,7 +263,7 @@ export async function DELETE(request: Request) {
       })
     );
 
-    return NextResponse.json({ message: "Mix audio deleted." });
+    return NextResponse.json({ message: "R2 file deleted." });
   } catch (error) {
     console.error(
       "Could not delete R2 mix audio:",

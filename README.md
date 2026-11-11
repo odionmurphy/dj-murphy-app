@@ -75,4 +75,17 @@ Optional cover art can be uploaded with each mix as a JPG, PNG, or WebP image
 up to 10 MB. Before using cover images, run
 `supabase/migrations/20261109170000_add_mix_artwork_path.sql` in the Supabase
 SQL Editor to add the `artwork_path` column to the existing `mixes` table.
+
+Live-set videos can be uploaded separately as MP4 or WebM files up to 5 GB.
+They are uploaded directly to the same R2 bucket and shown in a Live Sets
+section on the Mixes page. Run
+`supabase/migrations/20261111180000_add_mix_videos.sql` in the Supabase SQL
+Editor before publishing the first video. The existing R2 public URL and
+browser `PUT` CORS configuration are used for video uploads and playback.
+
+Upcoming gigs can also include an optional MP4 or WebM event video, uploaded
+directly to the same R2 bucket. Run
+`supabase/migrations/20261111183000_add_gig_video_path.sql` in the Supabase SQL
+Editor before adding gig videos. The event image remains optional and is used
+as the video poster when both are provided.
 # dj-murphy-app

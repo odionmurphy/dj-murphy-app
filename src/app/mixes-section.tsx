@@ -12,6 +12,13 @@ const mixColors = [
   { accent: "#fb923c", glow: "rgba(251,146,60,0.25)" },
 ];
 
+type LiveVideo = {
+  id: string;
+  title: string;
+  description: string | null;
+  file_path: string;
+};
+
 export default async function MixesSection() {
   // Request-time data, same pattern as the gigs section
   await connection();
@@ -23,6 +30,15 @@ export default async function MixesSection() {
 
   if (error) {
     console.error("Failed to load mixes:", error.message);
+  }
+
+  const { data: videos, error: videosError } = await supabase
+    .from("mix_videos")
+    .select("id, title, description, file_path")
+    .order("created_at", { ascending: false });
+
+  if (videosError) {
+    console.error("Failed to load live-set videos:", videosError.message);
   }
 
   return (
@@ -42,12 +58,68 @@ export default async function MixesSection() {
         </p>
         <MixBanner />
 
+        {!!videos?.length && (
+          <section aria-labelledby="live-sets-heading" className="mt-12">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-700">
+              Watch
+            </p>
+            <h2
+              id="live-sets-heading"
+              className="mt-3 text-3xl font-black sm:text-4xl"
+            >
+              LIVE SETS
+            </h2>
+            <p className="mt-2 max-w-2xl leading-7 text-slate-600">
+              Watch DJ Murphy bring the music to life.
+            </p>
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              {(videos as LiveVideo[]).map((video) => (
+                <article
+                  key={video.id}
+                  className="overflow-hidden rounded-2xl border border-purple-200 bg-[#f1eaff] shadow-sm"
+                >
+                  <video
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="aspect-video w-full bg-black"
+                    aria-label={`Watch ${video.title}`}
+                  >
+                    <source
+                      src={getR2PublicUrl(video.file_path)}
+                      type={video.file_path.toLowerCase().endsWith(".webm")
+                        ? "video/webm"
+                        : "video/mp4"}
+                    />
+                    Your browser does not support HTML video.
+                  </video>
+                  <div className="p-5 sm:p-6">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-purple-700">
+                      Live set · DJ Murphy
+                    </p>
+                    <h3 className="mt-2 break-words font-display text-3xl uppercase leading-none">
+                      {video.title}
+                    </h3>
+                    {video.description && (
+                      <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
+                        {video.description}
+                      </p>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         {!mixes?.length ? (
           <p className="mt-12 rounded-2xl border border-indigo-100 bg-white/80 p-6 text-slate-600 shadow-sm">
-            New mixes are on the way. Check back soon.
+            {videos?.length
+              ? "Audio mixes are on the way. Check back soon."
+              : "New mixes are on the way. Check back soon."}
           </p>
         ) : (
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
+          <div className={`${videos?.length ? "mt-10" : "mt-12"} grid gap-6 md:grid-cols-2`}>
             {mixes.map((mix, index) => {
               const src = mix.file_path.startsWith("r2/")
                 ? getR2PublicUrl(mix.file_path)
