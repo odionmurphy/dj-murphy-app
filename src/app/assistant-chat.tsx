@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 
@@ -8,6 +9,15 @@ type Message = {
   role: "user" | "assistant";
   content: string;
 };
+
+class AssistantRequestError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean
+  ) {
+    super(message);
+  }
+}
 
 const suggestions = [
   "I'm planning a wedding",
@@ -28,53 +38,88 @@ export default function AssistantChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [canRetry, setCanRetry] = useState(false);
+
+  async function requestReply(history: Message[]) {
+    const response = await fetch("/api/assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history.slice(-12) }),
+    });
+
+    const data: unknown = await response.json().catch(() => null);
+    if (!data || typeof data !== "object") {
+      throw new AssistantRequestError(
+        "The assistant returned an invalid response. Please try again.",
+        true
+      );
+    }
+
+    if (!response.ok) {
+      const message =
+        "error" in data && typeof data.error === "string"
+          ? data.error
+          : "The assistant couldn't respond. Please try again.";
+      const retryable =
+        "retryable" in data && typeof data.retryable === "boolean"
+          ? data.retryable
+          : true;
+      throw new AssistantRequestError(message, retryable);
+    }
+
+    const reply = "reply" in data ? data.reply : null;
+    if (typeof reply !== "string" || !reply.trim()) {
+      throw new AssistantRequestError(
+        "The assistant returned an empty response.",
+        true
+      );
+    }
+
+    setMessages((current) => [
+      ...current,
+      { role: "assistant", content: reply },
+    ]);
+  }
+
+  function showRequestError(err: unknown) {
+    setCanRetry(!(err instanceof AssistantRequestError) || err.retryable);
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Connection error. Please try again."
+    );
+  }
 
   async function sendMessage(text: string) {
     const content = text.trim();
-
     if (!content || loading) return;
 
-    const updatedMessages: Message[] = [
-      ...messages,
-      { role: "user", content },
-    ];
-
+    const updatedMessages: Message[] = [...messages, { role: "user", content }];
     setMessages(updatedMessages);
     setInput("");
     setError("");
+    setCanRetry(false);
     setLoading(true);
 
     try {
-      const response = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: updatedMessages.slice(-12),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || "The assistant couldn't respond. Please try again."
-        );
-      }
-
-      if (typeof data.reply !== "string" || !data.reply.trim()) {
-        throw new Error("The assistant returned an empty response.");
-      }
-
-      setMessages((current) => [
-        ...current,
-        { role: "assistant", content: data.reply },
-      ]);
+      await requestReply(updatedMessages);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Connection error. Please try again."
-      );
+      showRequestError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function retryLastMessage() {
+    if (loading || messages[messages.length - 1]?.role !== "user") return;
+
+    setError("");
+    setCanRetry(false);
+    setLoading(true);
+    try {
+      await requestReply(messages);
+    } catch (err) {
+      showRequestError(err);
     } finally {
       setLoading(false);
     }
@@ -172,22 +217,21 @@ export default function AssistantChat() {
             {error && (
               <div className="rounded-lg border border-red-400/30 p-3 text-sm text-red-300">
                 <p>{error}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const lastUserMessage = [...messages]
-                      .reverse()
-                      .find((message) => message.role === "user");
-
-                    if (lastUserMessage) {
-                      setMessages((current) => current.slice(0, -1));
-                      void sendMessage(lastUserMessage.content);
-                    }
-                  }}
-                  className="mt-2 underline"
+                <Link
+                  href="/booking"
+                  className="mt-2 inline-block font-bold underline"
                 >
-                  Try again
-                </button>
+                  Go to booking form
+                </Link>
+                {canRetry && messages[messages.length - 1]?.role === "user" && (
+                  <button
+                    type="button"
+                    onClick={() => void retryLastMessage()}
+                    className="ml-4 mt-2 underline"
+                  >
+                    Try again
+                  </button>
+                )}
               </div>
             )}
           </div>

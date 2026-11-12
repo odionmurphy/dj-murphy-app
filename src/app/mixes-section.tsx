@@ -3,6 +3,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import MixPlayer from "./mix-player";
 import MixBanner from "./mix-banner";
+import VideoPlayer from "./video-player";
 
 const mixColors = [
   { accent: "#c084fc", glow: "rgba(192,132,252,0.28)" },
@@ -78,21 +79,15 @@ export default async function MixesSection() {
                   key={video.id}
                   className="overflow-hidden rounded-2xl border border-purple-200 bg-[#f1eaff] shadow-sm"
                 >
-                  <video
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="aspect-video w-full bg-black"
-                    aria-label={`Watch ${video.title}`}
-                  >
-                    <source
-                      src={getR2PublicUrl(video.file_path)}
-                      type={video.file_path.toLowerCase().endsWith(".webm")
+                  <VideoPlayer
+                    src={getR2PublicUrl(video.file_path)}
+                    title={video.title}
+                    type={
+                      video.file_path.toLowerCase().endsWith(".webm")
                         ? "video/webm"
-                        : "video/mp4"}
-                    />
-                    Your browser does not support HTML video.
-                  </video>
+                        : "video/mp4"
+                    }
+                  />
                   <div className="p-5 sm:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-purple-700">
                       Live set · DJ Murphy

@@ -116,13 +116,49 @@ export async function POST(request: Request) {
       reply: response.output_text,
     });
   } catch (error) {
+    if (error instanceof OpenAI.APIError) {
+      console.error("OpenAI assistant request failed:", {
+        status: error.status,
+        code: error.code,
+        requestId: error.requestID,
+      });
+
+      if (
+        error.code === "insufficient_quota" ||
+        error.code === "credit_balance_exhausted"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The AI assistant is temporarily unavailable. Please use the booking form to send your request.",
+            retryable: false,
+          },
+          { status: 503 }
+        );
+      }
+
+      if (error.status === 429) {
+        return NextResponse.json(
+          {
+            error:
+              "The AI assistant is busy right now. Please try again shortly or use the booking form.",
+            retryable: true,
+          },
+          { status: 503 }
+        );
+      }
+    }
+
     console.error(
       "DJ Murphy assistant error:",
       error instanceof Error ? error.message : "Unknown error"
     );
 
     return NextResponse.json(
-      { error: "The assistant could not respond. Please try again." },
+      {
+        error: "The assistant could not respond. Please try again.",
+        retryable: true,
+      },
       { status: 500 }
     );
   }

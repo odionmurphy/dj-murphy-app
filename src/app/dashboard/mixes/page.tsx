@@ -847,8 +847,9 @@ export default function ManageMixesPage() {
           </p>
           <h2 className="mt-3 text-2xl font-black">Add a live-set video</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">
-            Upload an MP4 or WebM recording. It will be featured with a video
-            player on the public Mixes page. Maximum file size: 5 GB.
+            Upload an MP4 or WebM recording. For widest desktop and phone
+            compatibility, use MP4 with H.264 video and AAC audio. Maximum file
+            size: 5 GB.
           </p>
 
           <form

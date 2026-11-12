@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -25,14 +26,27 @@ export default function SiteNav() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08070b]/95 text-white backdrop-blur">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/95 text-white backdrop-blur">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2">
         <Link
           href="/"
           onClick={() => setOpen(false)}
-          className="text-xl font-black tracking-[0.2em]"
+          aria-label="DJ Murphy home"
+          className="relative isolate block size-16 shrink-0"
         >
-          DJ <span className="text-purple-400">MURPHY</span>
+          <span
+            aria-hidden="true"
+            className="absolute -inset-3 z-0 rounded-full bg-amber-300/40 opacity-75 blur-xl animate-pulse motion-reduce:animate-none"
+          />
+          <Image
+            src="/dj-murphy-logo.png"
+            alt=""
+            width={768}
+            height={768}
+            sizes="64px"
+            priority
+            className="relative z-10 size-full object-contain"
+          />
         </Link>
 
         {/* Desktop links */}
@@ -64,7 +78,7 @@ export default function SiteNav() {
 
       {/* Mobile links */}
       {open && (
-        <div className="flex flex-col gap-5 border-t border-white/10 bg-[#08070b] px-6 py-6 md:hidden">
+        <div className="flex flex-col gap-5 border-t border-white/10 bg-black px-6 py-6 md:hidden">
           {links.map((link) => (
             <Link
               key={link.href}

@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import GigVideoPlayer from "./gig-video-player";
+import VideoPlayer from "./video-player";
 
 export default async function GigsSection() {
   // Marks this component as request-time so "today" isn't frozen at build time
@@ -52,7 +52,7 @@ export default async function GigsSection() {
                 className="overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 shadow-sm transition hover:shadow-md"
               >
                 {gig.video_path ? (
-                  <GigVideoPlayer
+                  <VideoPlayer
                     src={getR2PublicUrl(gig.video_path)}
                     title={gig.title}
                     type={

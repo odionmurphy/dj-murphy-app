@@ -77,8 +77,10 @@ up to 10 MB. Before using cover images, run
 SQL Editor to add the `artwork_path` column to the existing `mixes` table.
 
 Live-set videos can be uploaded separately as MP4 or WebM files up to 5 GB.
-They are uploaded directly to the same R2 bucket and shown in a Live Sets
-section on the Mixes page. Run
+For widest desktop and phone compatibility, use MP4 with H.264 video and AAC
+audio; the file extension alone does not guarantee codec support. Videos are
+uploaded directly to the same R2 bucket and shown in a Live Sets section on the
+Mixes page. Run
 `supabase/migrations/20261111180000_add_mix_videos.sql` in the Supabase SQL
 Editor before publishing the first video. The existing R2 public URL and
 browser `PUT` CORS configuration are used for video uploads and playback.

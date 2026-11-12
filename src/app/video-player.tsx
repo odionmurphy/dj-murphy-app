@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 
-type GigVideoPlayerProps = {
+type VideoPlayerProps = {
   src: string;
   title: string;
   type: "video/mp4" | "video/webm";
   poster?: string;
 };
 
-export default function GigVideoPlayer({
+export default function VideoPlayer({
   src,
   title,
   type,
   poster,
-}: GigVideoPlayerProps) {
+}: VideoPlayerProps) {
   const [message, setMessage] = useState("");
 
   return (
@@ -25,18 +25,18 @@ export default function GigVideoPlayer({
         preload="metadata"
         poster={poster}
         className="aspect-video w-full bg-black"
-        aria-label={`Watch the ${title} event video`}
+        aria-label={`Watch ${title}`}
         onLoadedMetadata={(event) => {
           const video = event.currentTarget;
           setMessage(
             video.videoWidth === 0 || video.videoHeight === 0
-              ? "This file has sound but no visible video. Please re-upload a video with picture."
+              ? "This file has sound but no visible video. Re-export it as MP4 with H.264 video and AAC audio, then upload it again."
               : ""
           );
         }}
         onError={() =>
           setMessage(
-            "This video could not be played. Re-export it as MP4 with H.264 video and AAC audio, then upload it again."
+            "This video could not be loaded or decoded by this browser. Check the file, or re-export it as MP4 with H.264 video and AAC audio."
           )
         }
       >
