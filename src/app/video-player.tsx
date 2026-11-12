@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { pauseOtherMediaPlayers, registerMediaPlayer } from "./media-playback";
 
 type VideoPlayerProps = {
   src: string;
@@ -15,17 +16,27 @@ export default function VideoPlayer({
   type,
   poster,
 }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    return registerMediaPlayer(video);
+  }, []);
 
   return (
     <div className="relative bg-black">
       <video
+        ref={videoRef}
         controls
         playsInline
         preload="metadata"
         poster={poster}
         className="aspect-video w-full bg-black"
         aria-label={`Watch ${title}`}
+        onPlay={(event) => pauseOtherMediaPlayers(event.currentTarget)}
         onLoadedMetadata={(event) => {
           const video = event.currentTarget;
           setMessage(

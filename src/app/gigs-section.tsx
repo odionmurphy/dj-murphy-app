@@ -35,7 +35,7 @@ export default async function GigsSection() {
         </p>
 
         {!gigs?.length ? (
-          <div className="mt-12 rounded-2xl border border-indigo-100 bg-white/80 p-6 text-slate-600 shadow-sm">
+          <div className="mt-12 rounded-2xl border border-blue-200 bg-[#f3f8ff]/90 p-6 text-slate-600 shadow-sm">
             <p>No gigs announced yet. Check back soon, or book me for yours.</p>
             <Link
               href="/booking"
@@ -49,7 +49,7 @@ export default async function GigsSection() {
             {gigs.map((gig) => (
               <li
                 key={gig.id}
-                className="overflow-hidden rounded-2xl border border-indigo-100 bg-white/90 shadow-sm transition hover:shadow-md"
+                className="overflow-hidden rounded-2xl border border-blue-200 bg-[#f3f8ff]/90 shadow-sm transition hover:shadow-md"
               >
                 {gig.video_path ? (
                   <VideoPlayer

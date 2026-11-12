@@ -11,7 +11,7 @@ export default function MixesPage() {
   return (
     <Suspense
       fallback={
-        <p className="bg-[#f8f8ff] px-6 py-24 text-center text-slate-500">
+      <p className="bg-[#071b3a] px-6 py-24 text-center text-blue-100/70">
           Loading mixes...
         </p>
       }

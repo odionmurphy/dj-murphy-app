@@ -66,7 +66,7 @@ export default function MixBanner() {
         className="animate-banner-image object-cover"
         style={{ objectPosition: activeImage.position }}
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#08070b]/75 via-[#08070b]/30 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#071b3a]/80 via-[#071b3a]/35 to-transparent" />
       <p className="absolute inset-y-0 left-0 flex flex-col justify-center px-6 font-display text-5xl leading-[0.85] tracking-wide text-white drop-shadow-2xl sm:px-12 sm:text-7xl lg:px-16 lg:text-8xl">
         DJMURPHY
         <span className="mt-2 text-purple-300 sm:mt-4">MIX</span>

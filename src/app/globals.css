@@ -24,12 +24,12 @@ body {
 }
 
 .hero-grid-background {
-  background-color: #f8f8ff;
+  background-color: #eaf3ff;
   background-image:
-    linear-gradient(rgba(99, 102, 241, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99, 102, 241, 0.055) 1px, transparent 1px),
-    radial-gradient(ellipse at 82% 18%, rgba(244, 114, 182, 0.13), transparent 42%),
-    linear-gradient(110deg, #fafaff 0%, #f5f5ff 55%, #fff8fc 100%);
+    linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.07) 1px, transparent 1px),
+    radial-gradient(ellipse at 82% 18%, rgba(96, 165, 250, 0.2), transparent 42%),
+    linear-gradient(110deg, #eff6ff 0%, #e5f0ff 55%, #eaf4ff 100%);
   background-size:
     44px 44px,
     44px 44px,

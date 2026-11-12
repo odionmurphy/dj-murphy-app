@@ -45,23 +45,23 @@ export default async function MixesSection() {
   return (
     <section
       id="mixes"
-      className="hero-grid-background min-h-[70vh] px-6 py-16 text-[#111827] sm:py-24"
+      className="min-h-[70vh] bg-[#071b3a] px-6 py-16 text-white sm:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-700">
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-300">
           Listen
         </p>
         <h1 className="mt-4 text-4xl font-black sm:text-6xl">
           HEAR THE SOUND.
         </h1>
-        <p className="mt-4 max-w-2xl leading-7 text-slate-600">
+        <p className="mt-4 max-w-2xl leading-7 text-blue-100/70">
           Listen to mixes and live sets, wherever you are.
         </p>
         <MixBanner />
 
         {!!videos?.length && (
           <section aria-labelledby="live-sets-heading" className="mt-12">
-            <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-700">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-300">
               Watch
             </p>
             <h2
@@ -70,14 +70,14 @@ export default async function MixesSection() {
             >
               LIVE SETS
             </h2>
-            <p className="mt-2 max-w-2xl leading-7 text-slate-600">
+            <p className="mt-2 max-w-2xl leading-7 text-blue-100/70">
               Watch DJ Murphy bring the music to life.
             </p>
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               {(videos as LiveVideo[]).map((video) => (
                 <article
                   key={video.id}
-                  className="overflow-hidden rounded-2xl border border-purple-200 bg-[#f1eaff] shadow-sm"
+                  className="overflow-hidden rounded-2xl border border-blue-200 bg-[#e3efff] text-[#111827] shadow-sm"
                 >
                   <VideoPlayer
                     src={getR2PublicUrl(video.file_path)}
@@ -108,7 +108,7 @@ export default async function MixesSection() {
         )}
 
         {!mixes?.length ? (
-          <p className="mt-12 rounded-2xl border border-indigo-100 bg-white/80 p-6 text-slate-600 shadow-sm">
+          <p className="mt-12 rounded-2xl border border-blue-200 bg-[#f3f8ff]/90 p-6 text-slate-600 shadow-sm">
             {videos?.length
               ? "Audio mixes are on the way. Check back soon."
               : "New mixes are on the way. Check back soon."}
@@ -126,7 +126,7 @@ export default async function MixesSection() {
               return (
                 <article
                   key={mix.id}
-                  className="group relative overflow-hidden rounded-2xl border border-purple-200 bg-[#f1eaff] p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-950/10 sm:p-7"
+                  className="group relative overflow-hidden rounded-2xl border border-blue-200 bg-[#e3efff] p-5 text-[#111827] shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-950/10 sm:p-7"
                 >
                   <div
                     className="pointer-events-none absolute -right-12 -top-20 size-48 rounded-full opacity-[0.08] blur-3xl transition-opacity group-hover:opacity-20"

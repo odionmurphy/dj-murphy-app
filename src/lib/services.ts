@@ -9,18 +9,34 @@ export const services = [
   },
   {
     number: "02",
-    title: "Weddings & Private Events",
+    title: "Weddings",
     description:
-      "A tailored soundtrack for your celebration, from the first song to the last.",
+      "A personalized soundtrack for every part of your celebration, from the first dance to the final song.",
     image: "/images/occasions/weddings.jpg",
     imageAlt: "A newly married couple celebrating together",
   },
   {
     number: "03",
-    title: "Corporate & Festivals",
+    title: "Birthdays & Private Parties",
     description:
-      "Professional DJ performances for premium events and international stages.",
+      "A feel-good mix shaped around your guests, your favorite songs, and the atmosphere you want.",
+    image: "/images/services/club-nightlife.jpg",
+    imageAlt: "A DJ mixing music for a lively crowd",
+  },
+  {
+    number: "04",
+    title: "Corporate Events",
+    description:
+      "A polished soundtrack for company celebrations, formal occasions, and team events.",
     image: "/images/occasions/corporate-events.jpg",
     imageAlt: "A decorated reception table prepared for a special event",
+  },
+  {
+    number: "05",
+    title: "Festivals & Outdoor Events",
+    description:
+      "High-energy sets for open-air crowds, festival stages, and outdoor celebrations.",
+    image: "/images/services/festival-crowd.jpg",
+    imageAlt: "A lively festival crowd enjoying a live performance",
   },
 ];

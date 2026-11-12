@@ -2,6 +2,7 @@
 
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { pauseOtherMediaPlayers, registerMediaPlayer } from "./media-playback";
 
 type MixPlayerProps = {
   src: string;
@@ -25,6 +26,13 @@ export default function MixPlayer({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    return registerMediaPlayer(audio);
+  }, []);
+
+  useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
@@ -41,6 +49,7 @@ export default function MixPlayer({
     setError("");
     if (audio.paused) {
       try {
+        pauseOtherMediaPlayers(audio);
         await audio.play();
       } catch {
         setError("This mix could not be played. Please try again.");
@@ -74,7 +83,7 @@ export default function MixPlayer({
   }
 
   return (
-    <div className="mt-7 rounded-2xl border border-purple-200 bg-[#e9ddff] p-4 sm:p-5">
+    <div className="mt-7 rounded-2xl border border-blue-200 bg-[#d6e7ff] p-4 sm:p-5">
       <audio
         ref={audioRef}
         preload="metadata"
@@ -89,10 +98,7 @@ export default function MixPlayer({
         onTimeUpdate={(event) =>
           setCurrentTime(event.currentTarget.currentTime)
         }
-        onPlay={(event) => {
-          document.querySelectorAll("audio").forEach((other) => {
-            if (other !== event.currentTarget) other.pause();
-          });
+        onPlay={() => {
           setPlaying(true);
           setError("");
         }}
