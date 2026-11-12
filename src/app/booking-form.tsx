@@ -114,10 +114,10 @@ useEffect(() => {
           </div>
         </div>
 
-        <div className="border border-blue-200/15 bg-[#0b2449] p-6 sm:p-8">
+        <div className="border border-blue-300/40 bg-[#9bbbe8] p-6 text-[#10213d] sm:p-8">
           {submitted ? (
             <div role="status" className="py-8">
-              <p className="text-sm font-bold uppercase tracking-widest text-purple-300">
+              <p className="text-sm font-bold uppercase tracking-widest text-purple-700">
                 Booking request received
               </p>
 
@@ -125,7 +125,7 @@ useEffect(() => {
                 Thank you for your enquiry.
               </h3>
 
-              <p className="mt-4 leading-7 text-white/60">
+              <p className="mt-4 leading-7 text-slate-600">
                 Your booking enquiry has been saved. DJ Murphy will review
                 your request. Your booking is not confirmed until it has
                 been approved.
@@ -137,7 +137,7 @@ useEffect(() => {
                   setSubmitted(false);
                   setErrorMessage("");
                 }}
-                className="mt-6 border border-white/20 px-5 py-3 text-sm hover:border-purple-400"
+                className="mt-6 border border-blue-300 px-5 py-3 text-sm transition hover:border-purple-500 hover:bg-purple-600 hover:text-white"
               >
                 Submit another enquiry
               </button>
@@ -154,7 +154,7 @@ useEffect(() => {
               )}
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block text-sm text-white/70">
+                <label className="block text-sm text-slate-700">
                   Your name *
                   <input
                     name="name"
@@ -162,11 +162,11 @@ useEffect(() => {
                     maxLength={150}
                     autoComplete="name"
                     placeholder="Full name"
-                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
                   />
                 </label>
 
-                <label className="block text-sm text-white/70">
+                <label className="block text-sm text-slate-700">
                   Email address *
                   <input
                     name="email"
@@ -175,13 +175,13 @@ useEffect(() => {
                     maxLength={254}
                     autoComplete="email"
                     placeholder="you@example.com"
-                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
                   />
                 </label>
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block text-sm text-white/70">
+                <label className="block text-sm text-slate-700">
                   Phone number
                   <input
                     name="phone"
@@ -189,17 +189,17 @@ useEffect(() => {
                     maxLength={50}
                     autoComplete="tel"
                     placeholder="+49 ..."
-                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
                   />
                 </label>
 
-                <label className="block text-sm text-white/70">
+                <label className="block text-sm text-slate-700">
                   Event type *
                   <select
                     name="eventType"
                     required
                     defaultValue=""
-                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-purple-600"
                   >
                     <option value="" disabled>
                       Select event type
@@ -214,24 +214,24 @@ useEffect(() => {
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className="block text-sm text-white/70">
+                <label className="block text-sm text-slate-700">
                   Event date *
                   <input
                     name="eventDate"
                     type="date"
                     required
                     min={minimumDate || undefined}
-                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-purple-600"
                   />
                 </label>
 
-                <label className="block text-sm text-white/70">
+                <label className="block text-sm text-slate-700">
                   Performance duration *
                   <select
                     name="duration"
                     required
                     defaultValue=""
-                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-purple-600"
                   >
                     <option value="" disabled>
                       Select duration
@@ -245,30 +245,30 @@ useEffect(() => {
                 </label>
               </div>
 
-              <label className="block text-sm text-white/70">
+              <label className="block text-sm text-slate-700">
                 Venue / city / country *
                 <input
                   name="location"
                   required
                   maxLength={300}
                   placeholder="Venue, city, country"
-                  className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                  className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
                 />
               </label>
 
-              <label className="block text-sm text-white/70">
+              <label className="block text-sm text-slate-700">
                 Event details and music preferences
                 <textarea
                   name="message"
                   rows={4}
                   maxLength={5000}
                   placeholder="Tell me about your event, audience, music style and any special requirements..."
-                  className="mt-2 w-full resize-y border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                  className="mt-2 w-full resize-y border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
                 />
               </label>
 
-              <div className="border border-blue-100/15 bg-[#081f42] p-5">
-                <label className="block text-sm text-white/70">
+              <div className="border border-blue-400/40 bg-[#89aede] p-5">
+                <label className="block text-sm text-slate-700">
                   Have you already received a quote? Enter it to calculate
                   your deposit preview.
                   <input
@@ -279,17 +279,17 @@ useEffect(() => {
                     value={quote}
                     onChange={(event) => setQuote(event.target.value)}
                     placeholder="Agreed quote in EUR (optional)"
-                    className="mt-3 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-3 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
                   />
                 </label>
 
                 {total > 0 && (
                   <div className="mt-4 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm text-white/50">
+                      <p className="text-sm text-slate-600">
                         30% deposit preview
                       </p>
-                      <p className="mt-1 text-2xl font-black text-purple-300">
+                      <p className="mt-1 text-2xl font-black text-purple-700">
                         {deposit.toLocaleString("de-DE", {
                           style: "currency",
                           currency: "EUR",
@@ -297,7 +297,7 @@ useEffect(() => {
                       </p>
                     </div>
 
-                    <p className="text-right text-sm text-white/50">
+                    <p className="text-right text-sm text-slate-600">
                       Balance after deposit
                       <br />
                       {(total - deposit).toLocaleString("de-DE", {
@@ -308,7 +308,7 @@ useEffect(() => {
                   </div>
                 )}
 
-                <p className="mt-3 text-xs leading-5 text-white/40">
+                <p className="mt-3 text-xs leading-5 text-slate-500">
                   This is an estimate only. The final price must be agreed
                   with DJ Murphy. No payment is collected here.
                 </p>
@@ -324,7 +324,7 @@ useEffect(() => {
                   : "Send booking enquiry ↗"}
               </button>
 
-              <p className="text-xs leading-5 text-white/40">
+              <p className="text-xs leading-5 text-slate-500">
                 Submitting this form sends your enquiry to DJ Murphy for
                 review. No payment is collected at this stage.
               </p>
