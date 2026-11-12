@@ -88,7 +88,7 @@ useEffect(() => {
   }
 
   return (
-    <section id="booking" className="px-6 py-24">
+    <section id="booking" className="bg-[#071b3a] px-6 py-24">
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.8fr_1.2fr]">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-purple-300">
@@ -104,7 +104,7 @@ useEffect(() => {
             music requirements to start planning your DJ experience.
           </p>
 
-          <div className="mt-8 border border-purple-400/30 bg-purple-500/[0.06] p-6">
+          <div className="mt-8 border border-purple-400/30 bg-[#0c2852] p-6">
             <p className="font-bold">Simple deposit policy</p>
             <p className="mt-2 text-sm leading-6 text-white/60">
               The booking deposit is 30% of the final agreed price. The
@@ -114,7 +114,7 @@ useEffect(() => {
           </div>
         </div>
 
-        <div className="border border-white/10 bg-white/[0.02] p-6 sm:p-8">
+        <div className="border border-blue-200/15 bg-[#0b2449] p-6 sm:p-8">
           {submitted ? (
             <div role="status" className="py-8">
               <p className="text-sm font-bold uppercase tracking-widest text-purple-300">
@@ -162,7 +162,7 @@ useEffect(() => {
                     maxLength={150}
                     autoComplete="name"
                     placeholder="Full name"
-                    className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   />
                 </label>
 
@@ -175,7 +175,7 @@ useEffect(() => {
                     maxLength={254}
                     autoComplete="email"
                     placeholder="you@example.com"
-                    className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   />
                 </label>
               </div>
@@ -189,7 +189,7 @@ useEffect(() => {
                     maxLength={50}
                     autoComplete="tel"
                     placeholder="+49 ..."
-                    className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   />
                 </label>
 
@@ -199,7 +199,7 @@ useEffect(() => {
                     name="eventType"
                     required
                     defaultValue=""
-                    className="mt-2 w-full border border-white/15 bg-[#08070b] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   >
                     <option value="" disabled>
                       Select event type
@@ -221,7 +221,7 @@ useEffect(() => {
                     type="date"
                     required
                     min={minimumDate || undefined}
-                    className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   />
                 </label>
 
@@ -231,7 +231,7 @@ useEffect(() => {
                     name="duration"
                     required
                     defaultValue=""
-                    className="mt-2 w-full border border-white/15 bg-[#08070b] px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   >
                     <option value="" disabled>
                       Select duration
@@ -252,7 +252,7 @@ useEffect(() => {
                   required
                   maxLength={300}
                   placeholder="Venue, city, country"
-                  className="mt-2 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                  className="mt-2 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                 />
               </label>
 
@@ -263,11 +263,11 @@ useEffect(() => {
                   rows={4}
                   maxLength={5000}
                   placeholder="Tell me about your event, audience, music style and any special requirements..."
-                  className="mt-2 w-full resize-y border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                  className="mt-2 w-full resize-y border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                 />
               </label>
 
-              <div className="border border-white/10 p-5">
+              <div className="border border-blue-100/15 bg-[#081f42] p-5">
                 <label className="block text-sm text-white/70">
                   Have you already received a quote? Enter it to calculate
                   your deposit preview.
@@ -279,7 +279,7 @@ useEffect(() => {
                     value={quote}
                     onChange={(event) => setQuote(event.target.value)}
                     placeholder="Agreed quote in EUR (optional)"
-                    className="mt-3 w-full border border-white/15 bg-black px-4 py-3 text-white outline-none focus:border-purple-400"
+                    className="mt-3 w-full border border-blue-100/20 bg-[#06152c] px-4 py-3 text-white outline-none focus:border-purple-400"
                   />
                 </label>
 
