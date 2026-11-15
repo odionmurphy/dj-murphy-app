@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import FooterLinks from "./footer-links";
 
 export default function SiteFooter() {
   const pathname = usePathname();
@@ -42,7 +43,10 @@ export default function SiteFooter() {
             Booking
           </Link>
         </div>
+        <FooterLinks />
+      </div>
 
+      <div className="mx-auto mt-8 flex max-w-7xl flex-col items-center justify-between gap-5 border-t border-white/10 pt-6 md:flex-row">
         <p className="text-xs uppercase tracking-widest text-white/35 md:text-right">
           © 2026 DJ MURPHY · MUSIC WITHOUT BORDERS
         </p>

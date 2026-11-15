@@ -210,7 +210,7 @@ export default function AssistantChat() {
 
             {loading && (
               <p className={`text-sm ${isLightPage ? "text-purple-700" : "text-purple-300"}`}>
-                DJ Murphy is typing...
+               Assistant is typing....
               </p>
             )}
 

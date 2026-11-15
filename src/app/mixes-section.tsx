@@ -199,11 +199,11 @@ export default async function MixesSection() {
     </section>
   );
 }
-
 function getR2PublicUrl(filePath: string) {
   const publicUrl = process.env.R2_PUBLIC_URL;
   if (!publicUrl) {
-    throw new Error("R2_PUBLIC_URL must be configured to play R2-hosted mixes.");
+    console.error("R2_PUBLIC_URL is not configured; R2 media cannot be played.");
+    return "";
   }
 
   const baseUrl = new URL(publicUrl);

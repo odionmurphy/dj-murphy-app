@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const eventTypes = [
   "Club / Nightlife",
@@ -13,24 +12,17 @@ const eventTypes = [
   "Other",
 ];
 
+function todayString() {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${today.getFullYear()}-${month}-${day}`;
+}
+
 export default function BookingForm() {
-  const [quote, setQuote] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  const [minimumDate, setMinimumDate] = useState("");
-
-useEffect(() => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-
-  setMinimumDate(`${year}-${month}-${day}`);
-}, []);
-  const total = Number(quote) || 0;
-  const deposit = Math.round(total * 0.3 * 100) / 100;
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
@@ -54,7 +46,6 @@ useEffect(() => {
       duration: String(formData.get("duration") ?? ""),
       location: String(formData.get("location") ?? "").trim(),
       message: String(formData.get("message") ?? "").trim() || null,
-     
     };
 
     try {
@@ -75,7 +66,6 @@ useEffect(() => {
       }
 
       setSubmitted(true);
-      setQuote("");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -147,7 +137,7 @@ useEffect(() => {
               {errorMessage && (
                 <p
                   role="alert"
-                  className="border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300"
+                  className="border border-red-700/40 bg-red-100 p-4 text-sm text-red-800"
                 >
                   {errorMessage}
                 </p>
@@ -220,7 +210,9 @@ useEffect(() => {
                     name="eventDate"
                     type="date"
                     required
-                    min={minimumDate || undefined}
+                    ref={(element) => {
+                      if (element) element.min = todayString();
+                    }}
                     className="mt-2 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-purple-600"
                   />
                 </label>
@@ -267,53 +259,6 @@ useEffect(() => {
                 />
               </label>
 
-              <div className="border border-blue-400/40 bg-[#89aede] p-5">
-                <label className="block text-sm text-slate-700">
-                  Have you already received a quote? Enter it to calculate
-                  your deposit preview.
-                  <input
-                    name="quotedPrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={quote}
-                    onChange={(event) => setQuote(event.target.value)}
-                    placeholder="Agreed quote in EUR (optional)"
-                    className="mt-3 w-full border border-blue-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-500 outline-none focus:border-purple-600"
-                  />
-                </label>
-
-                {total > 0 && (
-                  <div className="mt-4 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-slate-600">
-                        30% deposit preview
-                      </p>
-                      <p className="mt-1 text-2xl font-black text-purple-700">
-                        {deposit.toLocaleString("de-DE", {
-                          style: "currency",
-                          currency: "EUR",
-                        })}
-                      </p>
-                    </div>
-
-                    <p className="text-right text-sm text-slate-600">
-                      Balance after deposit
-                      <br />
-                      {(total - deposit).toLocaleString("de-DE", {
-                        style: "currency",
-                        currency: "EUR",
-                      })}
-                    </p>
-                  </div>
-                )}
-
-                <p className="mt-3 text-xs leading-5 text-slate-500">
-                  This is an estimate only. The final price must be agreed
-                  with DJ Murphy. No payment is collected here.
-                </p>
-              </div>
-
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -326,7 +271,8 @@ useEffect(() => {
 
               <p className="text-xs leading-5 text-slate-500">
                 Submitting this form sends your enquiry to DJ Murphy for
-                review. No payment is collected at this stage.
+                review. The price is agreed with you after review, and no
+                payment is collected at this stage.
               </p>
             </form>
           )}

@@ -1,4 +1,4 @@
-export const MAX_MIX_AUDIO_BYTES = 5 * 1024 * 1024 * 1024;
+export const MAX_MIX_AUDIO_BYTES = 4900 * 1024 * 1024;
 
 export const MIX_AUDIO_CONTENT_TYPES = {
   aac: "audio/aac",

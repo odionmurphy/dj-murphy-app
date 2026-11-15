@@ -1,12 +1,45 @@
 
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-
+import { createHash } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
 
 const apiKey = process.env.OPENAI_API_KEY;
 
 const openai = apiKey ? new OpenAI({ apiKey }) : null;
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const limiter =
+  supabaseUrl && serviceKey
+    ? createClient(supabaseUrl, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    : null;
+
+async function withinLimit(key: string, limit: number, windowSeconds: number) {
+  if (!limiter) return false;
+
+  const { data, error } = await limiter.rpc("check_rate_limit", {
+    p_key: key,
+    p_limit: limit,
+    p_window_seconds: windowSeconds,
+  });
+
+  if (error) {
+    console.error("Rate limit check failed:", error.message);
+    return false;
+  }
+  return data === true;
+}
+
+function clientKey(request: Request) {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const ip = request.headers.get("x-real-ip") ?? forwarded ?? "unknown";
+  return "chat:" + createHash("sha256").update(ip).digest("hex").slice(0, 32);
+}
 
 const instructions = `
 You are the DJ Murphy AI Booking Assistant for a premium DJ service.
@@ -41,7 +74,20 @@ Keep replies friendly and normally under 120 words.
 `;
 
 export async function POST(request: Request) {
-  if (!openai) {
+  if (!openai) {   const allowed =
+    (await withinLimit(clientKey(request), 20, 600)) &&
+    (await withinLimit("chat:global", 600, 3600));
+
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        error:
+          "Too many messages right now. Please try again in a few minutes, or use the booking form.",
+        retryable: false,
+      },
+      { status: 429 }
+    );
+  }
     return NextResponse.json(
       { error: "The AI assistant is not configured on the server." },
       { status: 500 }

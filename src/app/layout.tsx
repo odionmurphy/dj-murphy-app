@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import SiteNav from "./site-nav";
 import SiteFooter from "./site-footer";
+import SiteAnalytics from "./site-analytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +22,7 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.djmurphy.de"),
   title: "DJ Murphy | International DJ for Clubs, Weddings & Events",
   description:
     "Book DJ Murphy for clubs, weddings, private celebrations, corporate events and festivals worldwide. Listen to mixes, see upcoming gigs and check availability.",
@@ -39,6 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteNav />
         <main className="flex-1">{children}</main>
         <SiteFooter />
+        <SiteAnalytics />
       </body>
     </html>
   );
