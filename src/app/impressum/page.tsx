@@ -14,9 +14,8 @@ export default function ImpressumPage() {
         <p>
           {legal.name}
           <br />
-          {legal.street}
-          <br />
-          {legal.postalCode} {legal.city}
+          
+           {legal.city}
           <br />
           {legal.country}
         </p>
@@ -49,11 +48,7 @@ export default function ImpressumPage() {
         </LegalSection>
       )}
 
-      <LegalSection title="Responsible for content (§ 18 (2) MStV)">
-        <p>
-          {legal.name}, {legal.street}, {legal.postalCode} {legal.city}
-        </p>
-      </LegalSection>
+     
 
       <LegalSection title="Consumer dispute resolution">
         <p>
